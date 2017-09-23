@@ -4,32 +4,40 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from constants import *
 import json
-
-
+from flask import jsonify
 engine = create_engine(DATABASEURI)
 Base = automap_base()
 Base.prepare(engine, reflect=True)
 Persons = Base.classes.persons
 session = Session(engine)
 
-def say_hello(username="World"):
-    return '<p>Hello %s!<\p>' % username
 
-header_text = '''
-    <html>\n<head> <title>EB Flask Test</title> </head>\n<body>'''
-instructions = '''
-    <p><em>Hint</em>: This is a RESTful web service! Append a username
-    to the URL (for example: <code>/Thelonious</code>) to say hello to
-    someone specific.</p>\n'''
+class InvalidUsage(Exception):
+    status_code = 400
 
-home_link = '<p><a href="/">Back</a></p>\n'
-footer_text = '</body>\n</html>'
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
 
 # EB looked for an 'application' callable by default
 application = Flask(__name__)
 
 
 #############PERSON routes####################
+
+@application.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 @application.route('/person', methods=['GET', 'POST'])
 def get_post_person():
@@ -44,11 +52,11 @@ def get_post_person():
             response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
 
     else:
-        #check db if person already exists
-        #if exists return person already exists
-        #else return 200
-        pass
-    
+        if any(x not in request.form for x in ['last_name', 'first_name']):
+            raise InvalidUsage('first name and last name must both be specified')
+        session.add(Persons(last_name=request.form['last_name'], first_name=request.form['first_name']))
+        session.commit()
+        response = '' 
     return json.dumps(response)
 
 @application.route('/person/<p_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -118,5 +126,18 @@ def get_address_persons():
 if __name__ == "__main__":
     application.debug = True
     application.run()
+
+def say_hello(username="World"):
+    return '<p>Hello %s!<\p>' % username
+
+header_text = '''
+    <html>\n<head> <title>EB Flask Test</title> </head>\n<body>'''
+instructions = '''
+    <p><em>Hint</em>: This is a RESTful web service! Append a username
+    to the URL (for example: <code>/Thelonious</code>) to say hello to
+    someone specific.</p>\n'''
+
+home_link = '<p><a href="/">Back</a></p>\n'
+footer_text = '</body>\n</html>'
 
 
