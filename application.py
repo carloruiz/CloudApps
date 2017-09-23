@@ -59,8 +59,8 @@ def get_post_person():
         session.commit()
         response = Response('')
 	response.headers['Person-URL'] = request.base_url + '/%s' % person.p_id
-    
-	return  response 
+
+   return response 
 
 @application.route('/person/<p_id>', methods=['GET', 'PUT', 'DELETE'])
 def get_put_del_person_id(p_id):
