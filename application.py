@@ -1,10 +1,10 @@
-from flask import Flask, request
+from flask import Flask, request, Response, jsonify
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from constants import *
 import json
-from flask import jsonify
+
 engine = create_engine(DATABASEURI)
 Base = automap_base()
 Base.prepare(engine, reflect=True)
@@ -44,20 +44,23 @@ def get_post_person():
     if request.method == 'GET':
         offset = 0 if 'Pagination-Offset' not in request.headers \
             else int(request.headers.get('Pagination-Offset'))
-            
+	            
         query = session.query(Persons).order_by(Persons.p_id)[offset:offset+10]
         #check 'query' is valid 
         response = []
         for row in query:
             response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
-
+	response = json.dumps(response)
     else:
         if any(x not in request.form for x in ['last_name', 'first_name']):
             raise InvalidUsage('first name and last name must both be specified')
-        session.add(Persons(last_name=request.form['last_name'], first_name=request.form['first_name']))
+        person = Persons(last_name=request.form['last_name'], first_name=request.form['first_name'])
+	session.add(person)
         session.commit()
-        response = '' 
-    return json.dumps(response)
+        response = Response('')
+	response.headers['Person-URL'] = request.base_url + '/%s' % person.p_id
+    
+	return  response 
 
 @application.route('/person/<p_id>', methods=['GET', 'PUT', 'DELETE'])
 def get_put_del_person_id(p_id):
@@ -75,7 +78,7 @@ def get_put_del_person_id(p_id):
 
     return 'called person/%s' %p_id
 
-@application.route('/person/<a_id>/addresses')
+@application.route('/person/<p_id>/addresses')
 def get_person_address():
     # check if a_id is valid. If so, return their address. Else 404
     return 'called person/$s/address' % p_id
