@@ -1,4 +1,16 @@
-from flask import Flask
+from flask import Flask, request
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from constants import *
+import json
+
+
+engine = create_engine(DATABASEURI)
+Base = automap_base()
+Base.prepare(engine, reflect=True)
+Persons = Base.classes.persons
+session = Session(engine)
 
 def say_hello(username="World"):
     return '<p>Hello %s!<\p>' % username
@@ -16,21 +28,32 @@ footer_text = '</body>\n</html>'
 # EB looked for an 'application' callable by default
 application = Flask(__name__)
 
+
+#############PERSON routes####################
+
 @application.route('/person', methods=['GET', 'POST'])
 def get_post_person():
     if request.method == 'GET':
-        #return paginated list of persons in db
-        pass
+        offset = 0 if 'Pagination-Offset' not in request.headers \
+            else int(request.headers.get('Pagination-Offset'))
+            
+        query = session.query(Persons).order_by(Persons.p_id)[offset:offset+10]
+        #check 'query' is valid 
+        response = []
+        for row in query:
+            response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
+
     else:
         #check db if person already exists
         #if exists return person already exists
         #else return 200
         pass
     
-    return 'called /person'
+    return json.dumps(response)
 
-@application.route('/person/<id>', methods=['GET', 'PUT', 'DELETE'])
-def get_put_del_person_id():
+@application.route('/person/<p_id>', methods=['GET', 'PUT', 'DELETE'])
+def get_put_del_person_id(p_id):
+        #query db here??
     if request.method == 'GET':
         #query db. If result is empty. return 404,
         #else 200 with entity in payload
@@ -42,19 +65,51 @@ def get_put_del_person_id():
         #delete entry in db if it exists. Return 4** code otherwise
         pass
 
-    return 'called person/<id>'
+    return 'called person/%s' %p_id
 
-@application.route('/person/<p_id>/<a_id>')
+@application.route('/person/<a_id>/addresses')
 def get_person_address():
-    return 'Hello, Wor
+    # check if a_id is valid. If so, return their address. Else 404
+    return 'called person/$s/address' % p_id
 
-@application.route('/person')
-def hello_world():
-    return 'Hello, World!'
 
-@application.route('/person')
-def hello_world():
-    return 'Hello, World!'
+#############ADDRESS routes####################
+
+@application.route('/addresses', methods=['GET', 'POST'])
+def get_post_address():
+    if request.method == 'GET':
+        #return paginated list of addresses in db
+        pass
+    else:
+        #check db if address  already exists
+        #if exists return error code for  already exists
+        #else return 200
+        pass
+    
+    return 'called /address'
+
+@application.route('/addresses/<a_id>', methods=['GET', 'PUT', 'DELETE'])
+def get_put_del_address_id():
+        #query db here??
+    if request.method == 'GET':
+        #query db. If result is empty. return 404,
+        #else 200 with entity in payload
+        pass
+    elif request.method == 'PUT':
+        #modify entry in db if it exists. Return 4** code otherwise
+        pass
+    else:
+        #delete entry in db if it exists. Return 4** code otherwise
+        pass
+
+    return 'called address/%s' %a_id
+
+
+@application.route('/addresses/<a_id>/persons')
+def get_address_persons():
+    # check if a_id is valid. If so, return their address. Else 404
+    return 'called person/$s/address' % p_id
+
 
 #application.add_url_rule('/', 'index', (lambda: header_text + say_hello() + instructions + footer_text))
 
