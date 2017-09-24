@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from person_constants import *
 import json
+from urlparse import urlparse, parse_qs
+
 
 engine = create_engine(DATABASEURI)
 Base = automap_base()
@@ -31,8 +33,6 @@ class InvalidUsage(Exception):
 application = Flask(__name__)
 
 
-#############PERSON routes####################
-
 @application.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
@@ -43,8 +43,14 @@ def handle_invalid_usage(error):
 def get_post_person():
     code = 400
     if request.method == 'GET':
+        parsed = urlparse(request.url)
+        url_query = parse_qs(parsed.query)
+        offset = 0 if 'offset' not in url_query \
+            else int(url_query['offset'][0])
+        '''
         offset = 0 if 'Pagination-Offset' not in request.headers \
             else int(request.headers.get('Pagination-Offset'))
+        '''
          
         query = session.query(Persons).order_by(Persons.p_id)[offset:offset+10]
         response = []
