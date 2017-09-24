@@ -31,8 +31,6 @@ class InvalidUsage(Exception):
 application = Flask(__name__)
 
 
-#############Address routes####################
-
 @application.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
@@ -55,55 +53,41 @@ def get_post_address():
         code = 200
     else:
         if any(x not in request.form for x in ['address', 'city', 'state', 'zip', 'country']):
-            raise InvalidUsage('Address supplied is incomplete or incorrectly supplied.')
-        address = Addresses(address=request.form['address'], city=request.form['city'], state=request.form['state'], zip=request.form['zip'], country=request.form['country'])
+            raise InvalidUsage('Address supplied is incomplete')
+
+        address = Addresses(address=request.form['address'], city=request.form['city'], \
+            state=request.form['state'], zip=request.form['zip'], country=request.form['country'])
+
         session.add(address)
         session.commit()
         response = Response('')
         response.headers['Person-URL'] = request.base_url + '/%s' % address.a_id
         code = 201
+
     return response, code 
 
 @application.route('/address/<a_id>', methods=['GET', 'PUT', 'DELETE'])
 def get_put_del_address_id(a_id):
+
     code = 400
-    #query db
-    response = []
+    response = ''
     query = session.query(Addresses).filter_by(a_id=a_id).all()
-    for row in query:
-        response.append({ 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
-    if not response:
+    address = { 'address': query[0].address, 'city': query[0].city, 'state': query[0].state, 'zip': query[0].zip, 'country': query[0].country } if query else None
+
+    if not address:
         raise InvalidUsage('a_id not found', status_code=404)
     
     if request.method == 'GET':
-        response = json.dumps(response)
+        response = json.dumps(address)
         code = 200
+
     elif request.method == 'PUT':
-        #only perform PUT on db fields that are in the request from
-        if 'address' not in request.form:
-            new_address = response[0]['address']
-        else:
-            new_address = request.form['address']
-        if 'city' not in request.form:
-            new_city = response[0]['city']
-        else:
-            new_city = request.form['city']
-        if 'state' not in request.form:
-            new_state = response[0]['state']
-        else:
-            new_state = request.form['state']
-        if 'zip' not in request.form:
-            new_zip = response[0]['zip']
-        else:
-            new_zip = request.form['zip']
-        if 'country' not in request.form:
-            new_country = response[0]['country']
-        else:
-            new_country = request.form['country']
-        session.query(Addresses).filter_by(a_id=a_id).update({'address': new_address, 'city': new_city, 'state': new_state, 'zip': new_zip, 'country': new_country })
+        address.update(request.form)
+        session.query(Addresses).filter_by(a_id=a_id).update(address)
         session.commit()
         response = ''
         code = 204
+
     elif request.method == 'DELETE':
         session.query(Addresses).filter_by(a_id=a_id).delete()
         response = ''
