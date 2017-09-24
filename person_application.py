@@ -47,12 +47,11 @@ def get_post_person():
             else int(request.headers.get('Pagination-Offset'))
          
         query = session.query(Persons).order_by(Persons.p_id)[offset:offset+10]
-        #check 'query' is valid 
         response = []
         for row in query:
             response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
         response = json.dumps(response)
-        code = 200
+        code = 206
     else:
         if any(x not in request.form for x in ['last_name', 'first_name']):
             raise InvalidUsage('first name and last name must both be specified')
@@ -66,35 +65,24 @@ def get_post_person():
 
 @application.route('/person/<p_id>', methods=['GET', 'PUT', 'DELETE'])
 def get_put_del_person_id(p_id):
-    #code = 400
-    #query db
-    response = []
+    response = ''
     query = session.query(Persons).filter_by(p_id=p_id).all()
-    for row in query:
-        response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
-    if not response:
+    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
+    if not person:
         raise InvalidUsage('p_id not found', status_code=404)
     
     if request.method == 'GET':
-        response = json.dumps(response)
+        response = json.dumps(person)
         code = 200
+    
     elif request.method == 'PUT':
-        #only perform PUT on db fields that are in the request from
-        if 'last_name' not in request.form:
-            new_last_name = response[0]['last_name']
-        else:
-            new_last_name = request.form['last_name']
-        if 'first_name' not in request.form:
-            new_first_name = response[0]['first_name']
-        else:
-            new_first_name = request.form['first_name']
-        session.query(Persons).filter_by(p_id=p_id).update({'last_name': new_last_name, 'first_name': new_first_name})
+        person.update(request.form)
+        session.query(Persons).filter_by(p_id=p_id).update(person)
         session.commit()
-        response = ''
         code = 204
+    
     elif request.method == 'DELETE':
         session.query(Persons).filter_by(p_id=p_id).delete()
-        response = ''
         session.commit()
         code = 204
 
@@ -103,6 +91,14 @@ def get_put_del_person_id(p_id):
 @application.route('/person/<p_id>/addresses')
 def get_person_address():
     # check if a_id is valid. If so, return their address. Else 404
+    response = ''
+    query = session.query(Persons).filter_by(p_id=p_id).all()
+    if not query:
+        raise InvalidUsage('p_id not found', status_code=404)
+    address_url = query[0].address_url
+    
+
+    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
     return 'called person/$s/address' % p_id
 
 
