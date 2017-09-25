@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from address_constants import *
 import json
+from urlparse import urlparse, parse_qs
 
 engine = create_engine(DATABASEURI)
 Base = automap_base()
@@ -41,10 +42,18 @@ def handle_invalid_usage(error):
 def get_post_address():
     code = 400
     if request.method == 'GET':
-        offset = 0 if 'Pagination-Offset' not in request.headers \
-            else int(request.headers.get('Pagination-Offset'))
+	parsed = urlparse(request.url)
+	url_query = parse_qs(parsed.query)
+	offset = 0 if 'offset' not in url_query  \
+	    else int(url_query['offset'][0])
+
+	args = {}
+	for x in ['address', 'city', 'state', 'zip', 'country']:
+	    if x in url_query:
+	        args[x] = url_query[x][0]
          
-        query = session.query(Addresses).order_by(Addresses.a_id)[offset:offset+10]
+        query = session.query(Addresses).filter_by(**args).order_by(Addresses.a_id)[offset:offset+10]
+
         #check 'query' is valid 
         response = []
         for row in query:
@@ -101,26 +110,6 @@ def get_address_persons():
     # check if a_id is valid. If so, return their address. Else 404
     return 'called person/$s/address' % p_id
 
-
-#application.add_url_rule('/', 'index', (lambda: header_text + say_hello() + instructions + footer_text))
-
-#application.add_url_rule('/<username>', 'hello', (lambda username: header_text + say_hello(username) + home_link + footer_text))
-
 if __name__ == "__main__":
     application.debug = True
     application.run()
-
-def say_hello(username="World"):
-    return '<p>Hello %s!<\p>' % username
-
-header_text = '''
-    <html>\n<head> <title>EB Flask Test</title> </head>\n<body>'''
-instructions = '''
-    <p><em>Hint</em>: This is a RESTful web service! Append a username
-    to the URL (for example: <code>/Thelonious</code>) to say hello to
-    someone specific.</p>\n'''
-
-home_link = '<p><a href="/">Back</a></p>\n'
-footer_text = '</body>\n</html>'
-
-
