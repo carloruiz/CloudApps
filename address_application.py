@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from address_constants import *
 import json
-from urlparse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs
 
 engine = create_engine(DATABASEURI)
 Base = automap_base()
@@ -42,13 +42,13 @@ def handle_invalid_usage(error):
 def get_post_address():
     code = 400
     if request.method == 'GET':
-	offset = 0 if 'offset' not in request.args \
+    offset = 0 if 'offset' not in request.args \
             else int(request.args['offset'][0])
 
-	args = {}
-	for x in ['address', 'city', 'state', 'zip', 'country']:
-	    if x in request.args:
-	        args[x] = request.args[x]
+    args = {}
+    for x in ['address', 'city', 'state', 'zip', 'country']:
+        if x in request.args:
+            args[x] = request.args[x]
          
         query = session.query(Addresses).filter_by(**args).order_by(Addresses.a_id)[offset:offset+10]
 
@@ -59,7 +59,7 @@ def get_post_address():
         response = json.dumps(response)
         code = 200
     else:
-	payload = jason.loads(request.data)
+    payload = jason.loads(request.data)
         if any(x not in payload for x in ['address', 'city', 'state', 'zip', 'country']):
             raise InvalidUsage('Address supplied is incomplete')
 
