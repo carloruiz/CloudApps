@@ -59,7 +59,7 @@ def get_post_address():
         response = json.dumps(response)
         code = 200
     else:
-    payload = jason.loads(request.data)
+        payload = jason.loads(request.data)
         if any(x not in payload for x in ['address', 'city', 'state', 'zip', 'country']):
             raise InvalidUsage('Address supplied is incomplete')
 
