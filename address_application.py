@@ -42,15 +42,13 @@ def handle_invalid_usage(error):
 def get_post_address():
     code = 400
     if request.method == 'GET':
-	parsed = urlparse(request.url)
-	url_query = parse_qs(parsed.query)
-	offset = 0 if 'offset' not in url_query  \
-	    else int(url_query['offset'][0])
+	offset = 0 if 'offset' not in request.args \
+            else int(request.args['offset'][0])
 
 	args = {}
 	for x in ['address', 'city', 'state', 'zip', 'country']:
-	    if x in url_query:
-	        args[x] = url_query[x][0]
+	    if x in request.args:
+	        args[x] = request.args[x]
          
         query = session.query(Addresses).filter_by(**args).order_by(Addresses.a_id)[offset:offset+10]
 
@@ -61,11 +59,12 @@ def get_post_address():
         response = json.dumps(response)
         code = 200
     else:
-        if any(x not in request.form for x in ['address', 'city', 'state', 'zip', 'country']):
+	payload = jason.loads(request.data)
+        if any(x not in payload for x in ['address', 'city', 'state', 'zip', 'country']):
             raise InvalidUsage('Address supplied is incomplete')
 
-        address = Addresses(address=request.form['address'], city=request.form['city'], \
-            state=request.form['state'], zip=request.form['zip'], country=request.form['country'])
+        address = Addresses(address=payload['address'], city=payload['city'], \
+            state=payload['state'], zip=payload['zip'], country=payload['country'])
 
         session.add(address)
         session.commit()
@@ -91,7 +90,7 @@ def get_put_del_address_id(a_id):
         code = 200
 
     elif request.method == 'PUT':
-        address.update(request.form)
+        address.update(json.loads(request.data))
         session.query(Addresses).filter_by(a_id=a_id).update(address)
         session.commit()
         response = ''
