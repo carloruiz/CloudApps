@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from address_constants import *
 import json
-#removed import
+#from urlparse import urlparse, parse_qs
 from urllib.parse import urlparse, parse_qs
+from flask_cors import CORS
 
 engine = create_engine(DATABASEURI)
 Base = automap_base()
@@ -45,14 +46,13 @@ def get_post_address():
     if request.method == 'GET':
         offset = 0 if 'offset' not in request.args else int(request.args['offset'][0])
 
-    args = {}
-    for x in ['address', 'city', 'state', 'zip', 'country']:
-        if x in request.args:
-            args[x] = request.args[x]
+        args = {}
+        for x in ['address', 'city', 'state', 'zip', 'country']:
+            if x in request.args:
+                args[x] = request.args[x]
          
         query = session.query(Addresses).filter_by(**args).order_by(Addresses.a_id)[offset:offset+10]
 
-        #check 'query' is valid 
         response = []
         for row in query:
             response.append({ 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
@@ -93,12 +93,10 @@ def get_put_del_address_id(a_id):
         address.update(json.loads(request.data))
         session.query(Addresses).filter_by(a_id=a_id).update(address)
         session.commit()
-        response = ''
         code = 204
 
     elif request.method == 'DELETE':
         session.query(Addresses).filter_by(a_id=a_id).delete()
-        response = ''
         session.commit()
         code = 204
 
