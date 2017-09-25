@@ -47,12 +47,14 @@ def get_post_person():
         url_query = parse_qs(parsed.query)
         offset = 0 if 'offset' not in url_query \
             else int(url_query['offset'][0])
-        '''
-        offset = 0 if 'Pagination-Offset' not in request.headers \
-            else int(request.headers.get('Pagination-Offset'))
-        '''
-         
-        query = session.query(Persons).order_by(Persons.p_id)[offset:offset+10]
+        
+        args = {}
+        for x in ['last_name', 'first_name']:
+            if x in url_query:
+                args[x] = url_query[x][0] 
+    
+        query = session.query(Persons).filter_by(**args).order_by(Persons.p_id)[offset:offset+10]
+        
         response = []
         for row in query:
             response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
@@ -96,37 +98,17 @@ def get_put_del_person_id(p_id):
     
 @application.route('/person/<p_id>/addresses')
 def get_person_address():
-    # check if a_id is valid. If so, return their address. Else 404
     response = ''
     query = session.query(Persons).filter_by(p_id=p_id).all()
     if not query:
         raise InvalidUsage('p_id not found', status_code=404)
     address_url = query[0].address_url
-    
-
     person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
+    
     return 'called person/$s/address' % p_id
 
-
-#application.add_url_rule('/', 'index', (lambda: header_text + say_hello() + instructions + footer_text))
-
-#application.add_url_rule('/<username>', 'hello', (lambda username: header_text + say_hello(username) + home_link + footer_text))
 
 if __name__ == "__main__":
     application.debug = True
     application.run()
-
-def say_hello(username="World"):
-    return '<p>Hello %s!<\p>' % username
-
-header_text = '''
-    <html>\n<head> <title>EB Flask Test</title> </head>\n<body>'''
-instructions = '''
-    <p><em>Hint</em>: This is a RESTful web service! Append a username
-    to the URL (for example: <code>/Thelonious</code>) to say hello to
-    someone specific.</p>\n'''
-
-home_link = '<p><a href="/">Back</a></p>\n'
-footer_text = '</body>\n</html>'
-
 
