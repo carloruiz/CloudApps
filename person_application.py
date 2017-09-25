@@ -43,15 +43,13 @@ def handle_invalid_usage(error):
 def get_post_person():
     code = 400
     if request.method == 'GET':
-        parsed = urlparse(request.url)
-        url_query = parse_qs(parsed.query)
-        offset = 0 if 'offset' not in url_query \
-            else int(url_query['offset'][0])
+        offset = 0 if 'offset' not in request.args \
+            else int(request.args['offset'][0])
         
         args = {}
         for x in ['last_name', 'first_name']:
-            if x in url_query:
-                args[x] = url_query[x][0] 
+            if x in request.args:
+                args[x] = request.args[x]
     
         query = session.query(Persons).filter_by(**args).order_by(Persons.p_id)[offset:offset+10]
         
@@ -61,9 +59,10 @@ def get_post_person():
         response = json.dumps(response)
         code = 206
     else:
-        if any(x not in request.form for x in ['last_name', 'first_name']):
+        payload = json.loads(request.data)
+        if any(x not in payload for x in ['last_name', 'first_name']):
             raise InvalidUsage('first name and last name must both be specified')
-        person = Persons(last_name=request.form['last_name'], first_name=request.form['first_name'])
+        person = Persons(last_name=payload['last_name'], first_name=payload['first_name'])
         session.add(person)
         session.commit()
         response = Response('')
@@ -84,7 +83,7 @@ def get_put_del_person_id(p_id):
         code = 200
     
     elif request.method == 'PUT':
-        person.update(request.form)
+        person.update(json.loads(request.data))
         session.query(Persons).filter_by(p_id=p_id).update(person)
         session.commit()
         code = 204

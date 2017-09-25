@@ -61,7 +61,7 @@ def get_post_address():
         session.add(address)
         session.commit()
         response = Response('')
-        response.headers['Person-URL'] = request.base_url + '/%s' % address.a_id
+        response.headers['Address-URL'] = request.base_url + '/%s' % address.a_id
         code = 201
 
     return response, code 
