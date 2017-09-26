@@ -56,7 +56,7 @@ def get_post_address():
 
         response = []
         for row in query:
-            response.append({ 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
+            response.append({ 'a_id': row.a_id, 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
         response = json.dumps(response)
         code = 200
     else:

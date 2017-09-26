@@ -56,7 +56,7 @@ def get_post_person():
         
         response = []
         for row in query:
-            response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
+            response.append({ 'p_id': row.p_id, 'last_name': row.last_name, 'first_name': row.first_name })
         response = json.dumps(response)
         code = 206
     else:
@@ -75,7 +75,7 @@ def get_post_person():
 def get_put_del_person_id(p_id):
     response = ''
     query = session.query(Persons).filter_by(p_id=p_id).all()
-    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
+    person = {'p_id': p_id, 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
     if not person:
         raise InvalidUsage('p_id not found', status_code=404)
     
