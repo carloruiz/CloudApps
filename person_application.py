@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from person_constants import *
 import json
 from urllib.parse import urlparse, parse_qs
+#from urlparse import urlparse, parse_qs
 from flask_cors import CORS
 
 engine = create_engine(DATABASEURI)
@@ -56,9 +57,9 @@ def get_post_person():
         
         response = []
         for row in query:
-            response.append({ 'p_id': row.p_id, 'last_name': row.last_name, 'first_name': row.first_name })
+            response.append({ 'p_id':row.p_id, 'last_name': row.last_name, 'first_name': row.first_name, 'address_url': row.address_url })
         response = json.dumps(response)
-        code = 206
+        code = 200
     else:
         payload = json.loads(request.data)
         if any(x not in payload for x in ['last_name', 'first_name']):
@@ -75,7 +76,7 @@ def get_post_person():
 def get_put_del_person_id(p_id):
     response = ''
     query = session.query(Persons).filter_by(p_id=p_id).all()
-    person = {'p_id': p_id, 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
+    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
     if not person:
         raise InvalidUsage('p_id not found', status_code=404)
     

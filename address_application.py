@@ -14,7 +14,6 @@ Base.prepare(engine, reflect=True)
 Addresses = Base.classes.addresses
 session = Session(engine)
 
-
 class InvalidUsage(Exception):
     status_code = 400
 
@@ -104,32 +103,21 @@ def get_put_del_address_id(a_id):
     return response, code
     
 @application.route('/addresses/<a_id>/persons', methods=['GET'])
-def get_address_persons():
+def get_address_persons(a_id):
     code = 400
     response = []
-    a_url = endpoint + str(a_id) + 'addresses'
-    query = session.query(Persons).filter_by(address_url=a_url).all()
+    a_url = addresses_endpoint + str(a_id) + '/addresses'
+    query = []
+    #query = session.query(Persons).filter_by(address_url=a_url).all()
     if not query:
-        raise InvalidUsage('p_id not found', status_code=404)
+        raise InvalidUsage('a_id not found', status_code=404)
     for row in query:
-        response.append({ 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
+        response.append({ 'first_name': row.first_name, 'city': row.last_name, 'address_url': row.address_url })
     response = json.dumps(response)
     code = 200
     
     return response, code
 
-''''
-@application.route('/person/<p_id>/addresses', methods=['GET'])
-def get_person_address():
-    response = ''
-    query = session.query(Persons).filter_by(p_id=p_id).all()
-    if not query:
-        raise InvalidUsage('p_id not found', status_code=404)
-    address_url = query[0].address_url
-    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
-    
-    return 'called person/$s/address' % p_id
-'''
 if __name__ == "__main__":
     application.debug = True
     application.run()
