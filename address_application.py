@@ -7,6 +7,7 @@ import json
 from urlparse import urlparse, parse_qs
 from flask_cors import CORS
 from pymysql.err import IntegrityError
+import requests
 
 engine = create_engine(DATABASEURI)
 Base = automap_base()
@@ -109,21 +110,16 @@ def get_put_del_address_id(a_id):
 
     return response, code
     
-@application.route('/addresses/<a_id>/persons', methods=['GET'])
+@application.route('/address/<a_id>/persons', methods=['GET'])
 def get_address_persons(a_id):
     code = 400
-    response = []
-    a_url = addresses_endpoint + str(a_id) + '/addresses'
-    query = []
-    #query = session.query(Persons).filter_by(address_url=a_url).all()
-    if not query:
-        raise InvalidUsage('a_id not found', status_code=404)
-    for row in query:
-        response.append({ 'first_name': row.first_name, 'city': row.last_name, 'address_url': row.address_url })
-    response = json.dumps(response)
-    code = 200
-    
-    return response, code
+    address_url = request.base_url[0:request.base_url.rfind('/')]
+    print(address_url + '\n\n\n\n\n\n\n\n')
+
+    print(persons_endpoint)
+
+    r = requests.get(persons_endpoint , params={"address_url": address_url})
+    return r.text, r.status_code
 
 if __name__ == "__main__":
     application.debug = True
