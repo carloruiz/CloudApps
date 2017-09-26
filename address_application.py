@@ -5,8 +5,8 @@ from sqlalchemy import create_engine
 from address_constants import *
 import json
 from urlparse import urlparse, parse_qs
-#from urllib.parse import urlparse, parse_qs
 from flask_cors import CORS
+from pymysql.err import IntegrityError
 
 engine = create_engine(DATABASEURI)
 Base = automap_base()
@@ -42,10 +42,8 @@ def handle_invalid_usage(error):
 
 @application.route('/address', methods=['GET', 'POST'])
 def get_post_address():
-    code = 400
     if request.method == 'GET':
-        offset = 0 if 'offset' not in request.args else int(request.args['offset'][0])
-
+        offset = 0 if 'offset' not in request.args else int(request.args['offset'])
         args = {}
         for x in ['address', 'city', 'state', 'zip', 'country']:
             if x in request.args:
@@ -58,17 +56,26 @@ def get_post_address():
             response.append({ 'a_id': row.a_id, 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
         response = json.dumps(response)
         code = 200
+
     else:
         payload = json.loads(request.data)
         if any(x not in payload for x in ['address', 'city', 'state', 'zip', 'country']):
             raise InvalidUsage('Address supplied is incomplete')
 
-        address = Addresses(address=payload['address'], city=payload['city'], \
-            state=payload['state'], zip=payload['zip'], country=payload['country'])
+        args = {}
+        for x in ['address', 'city', 'state', 'zip', 'country']:
+            args[x] = payload[x]
+        
+        query = session.query(Addresses).filter_by(**args).all()
+        if query:
+            address = query[0]
+        else:
+            address = Addresses(**args)
+            session.add(address)
+            session.commit()
 
-        session.add(address)
-        session.commit()
         response = Response('')
+            
         response.headers['Address-URL'] = request.base_url + '/%s' % address.a_id
         code = 201
 
@@ -80,7 +87,7 @@ def get_put_del_address_id(a_id):
     code = 400
     response = ''
     query = session.query(Addresses).filter_by(a_id=a_id).all()
-    address = { 'address': query[0].address, 'city': query[0].city, 'state': query[0].state, 'zip': query[0].zip, 'country': query[0].country } if query else None
+    address = { 'a_id': a_id, 'address': query[0].address, 'city': query[0].city, 'state': query[0].state, 'zip': query[0].zip, 'country': query[0].country } if query else None
 
     if not address:
         raise InvalidUsage('a_id not found', status_code=404)
@@ -120,4 +127,4 @@ def get_address_persons(a_id):
 
 if __name__ == "__main__":
     application.debug = True
-    application.run()
+    application.run(port=5001)
