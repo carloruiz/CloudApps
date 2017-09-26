@@ -103,11 +103,33 @@ def get_put_del_address_id(a_id):
 
     return response, code
     
-@application.route('/addresses/<a_id>/persons')
+@application.route('/addresses/<a_id>/persons', methods=['GET'])
 def get_address_persons():
-    # check if a_id is valid. If so, return their address. Else 404
-    return 'called person/$s/address' % p_id
+    code = 400
+    response = []
+    a_url = endpoint + str(a_id) + 'addresses'
+    query = session.query(Persons).filter_by(address_url=a_url).all()
+    if not query:
+        raise InvalidUsage('p_id not found', status_code=404)
+    for row in query:
+        response.append({ 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
+    response = json.dumps(response)
+    code = 200
+    
+    return response, code
 
+''''
+@application.route('/person/<p_id>/addresses', methods=['GET'])
+def get_person_address():
+    response = ''
+    query = session.query(Persons).filter_by(p_id=p_id).all()
+    if not query:
+        raise InvalidUsage('p_id not found', status_code=404)
+    address_url = query[0].address_url
+    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
+    
+    return 'called person/$s/address' % p_id
+'''
 if __name__ == "__main__":
     application.debug = True
     application.run()
