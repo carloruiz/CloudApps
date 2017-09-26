@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from person_constants import *
 import json
-from urllib.parse import urlparse, parse_qs
-#from urlparse import urlparse, parse_qs
+#from urllib.parse import urlparse, parse_qs
+from urlparse import urlparse, parse_qs
 from flask_cors import CORS
 
 engine = create_engine(DATABASEURI)
