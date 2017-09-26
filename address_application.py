@@ -32,6 +32,7 @@ class InvalidUsage(Exception):
 
 # EB looked for an 'application' callable by default
 application = Flask(__name__)
+CORS(application)
 
 
 @application.errorhandler(InvalidUsage)
@@ -59,7 +60,7 @@ def get_post_address():
         response = json.dumps(response)
         code = 200
     else:
-        payload = jason.loads(request.data)
+        payload = json.loads(request.data)
         if any(x not in payload for x in ['address', 'city', 'state', 'zip', 'country']):
             raise InvalidUsage('Address supplied is incomplete')
 

@@ -31,6 +31,7 @@ class InvalidUsage(Exception):
 
 # EB looked for an 'application' callable by default
 application = Flask(__name__)
+CORS(application)
 
 
 @application.errorhandler(InvalidUsage)
