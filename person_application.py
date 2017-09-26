@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from person_constants import *
 import json
 from urllib.parse import urlparse, parse_qs
+#from urlparse import urlparse, parse_qs
 from flask_cors import CORS
 
 engine = create_engine(DATABASEURI)
@@ -56,9 +57,9 @@ def get_post_person():
         
         response = []
         for row in query:
-            response.append({ 'last_name': row.last_name, 'first_name': row.first_name })
+            response.append({ 'p_id':row.p_id, 'last_name': row.last_name, 'first_name': row.first_name, 'address_url': row.address_url })
         response = json.dumps(response)
-        code = 206
+        code = 200
     else:
         payload = json.loads(request.data)
         if any(x not in payload for x in ['last_name', 'first_name']):
