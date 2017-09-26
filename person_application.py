@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from person_constants import *
 import json
-#from urllib.parse import urlparse, parse_qs
+import requests
+from requests.exceptions import MissingSchema
 from urlparse import urlparse, parse_qs
 from flask_cors import CORS
 
@@ -46,13 +47,12 @@ def get_post_person():
     code = 400
     if request.method == 'GET':
         offset = 0 if 'offset' not in request.args \
-            else int(request.args['offset'][0])
-        
+            else int(request.args['offset'])
+        print(offset)
         args = {}
-        for x in ['last_name', 'first_name']:
+        for x in ['last_name', 'first_name', 'address_url']:
             if x in request.args:
                 args[x] = request.args[x]
-    
         query = session.query(Persons).filter_by(**args).order_by(Persons.p_id)[offset:offset+10]
         
         response = []
@@ -60,11 +60,17 @@ def get_post_person():
             response.append({ 'p_id':row.p_id, 'last_name': row.last_name, 'first_name': row.first_name, 'address_url': row.address_url })
         response = json.dumps(response)
         code = 200
+
     else:
         payload = json.loads(request.data)
         if any(x not in payload for x in ['last_name', 'first_name']):
             raise InvalidUsage('first name and last name must both be specified')
-        person = Persons(last_name=payload['last_name'], first_name=payload['first_name'])
+        args = {}
+        for x in ['last_name', 'first_name', 'address_url']:
+            if x in request.args:
+                args[x] = request.args[x]
+
+        person = Persons(**args)
         session.add(person)
         session.commit()
         response = Response('')
@@ -76,7 +82,7 @@ def get_post_person():
 def get_put_del_person_id(p_id):
     response = ''
     query = session.query(Persons).filter_by(p_id=p_id).all()
-    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
+    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name, 'address_url': query[0].address_url} if query else None
     if not person:
         raise InvalidUsage('p_id not found', status_code=404)
     
@@ -97,16 +103,23 @@ def get_put_del_person_id(p_id):
 
     return response, code
     
-@application.route('/person/<p_id>/addresses')
-def get_person_address():
+@application.route('/person/<p_id>/address')
+def get_person_address(p_id):
     response = ''
     query = session.query(Persons).filter_by(p_id=p_id).all()
     if not query:
         raise InvalidUsage('p_id not found', status_code=404)
+
     address_url = query[0].address_url
-    person = { 'last_name': query[0].last_name, 'first_name': query[0].first_name } if query else None
+    if not address_url:
+        return response, 204
     
-    return 'called person/$s/address' % p_id
+    try:
+        r = requests.get(address_url)
+    except MissingSchema:
+        raise InvalidUsage('Invalid Url', status_code=404)
+   
+    return r.text, r.status_code
 
 
 if __name__ == "__main__":
