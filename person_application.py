@@ -67,7 +67,7 @@ def get_post_person():
             raise InvalidUsage('first name and last name must both be specified')
         args = {}
         for x in ['last_name', 'first_name', 'address_url']:
-            args[x] = request.payload[x]
+            args[x] = payload[x]
 
         person = Persons(**args)
         session.add(person)
