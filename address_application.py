@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from address_constants import *
 import json
-#from urlparse import urlparse, parse_qs
-from urllib.parse import urlparse, parse_qs
+from urlparse import urlparse, parse_qs
 from flask_cors import CORS
+from pymysql.err import IntegrityError
+import requests
+from requests.exceptions import MissingSchema, RequestException
 
 engine = create_engine(DATABASEURI)
 Base = automap_base()
@@ -42,10 +44,8 @@ def handle_invalid_usage(error):
 
 @application.route('/address', methods=['GET', 'POST'])
 def get_post_address():
-    code = 400
     if request.method == 'GET':
-        offset = 0 if 'offset' not in request.args else int(request.args['offset'][0])
-
+        offset = 0 if 'offset' not in request.args else int(request.args['offset'])
         args = {}
         for x in ['address', 'city', 'state', 'zip', 'country']:
             if x in request.args:
@@ -55,21 +55,41 @@ def get_post_address():
 
         response = []
         for row in query:
-            response.append({ 'a_id': row.a_id, 'address': row.address, 'city': row.city, 'state': row.state, 'zip': row.zip, 'country': row.country })
+            response.append({ 'a_id': row.a_id, 'address': row.address, 'city': row.city, 'state': row.state, \
+                'zip': row.zip, 'country': row.country, 'person_url': row.person_url })
         response = json.dumps(response)
         code = 200
+
     else:
         payload = json.loads(request.data)
         if any(x not in payload for x in ['address', 'city', 'state', 'zip', 'country']):
             raise InvalidUsage('Address supplied is incomplete')
 
-        address = Addresses(address=payload['address'], city=payload['city'], \
-            state=payload['state'], zip=payload['zip'], country=payload['country'])
-
-        session.add(address)
-        session.commit()
-        response = Response('')
-        response.headers['Address-URL'] = request.base_url + '/%s' % address.a_id
+        args = {}
+        for x in ['address', 'city', 'state', 'zip', 'country', 'person_url' ]:
+            args[x] = payload[x]
+        
+        query = session.query(Addresses).filter_by(**args).all()
+        if query:
+            address = query[0]
+        else:
+            address = Addresses(**args)
+            session.add(address)
+            session.commit()
+        #Place address_url in persons with PUT call
+        query = session.query(Addresses).filter_by(**args).all()
+        address_url = addresses_endpoint + '/' + str(query[0].a_id)
+        response = {'Address-URL': request.base_url + '/%s' % address.a_id}
+        
+        try:
+            payload = {'address_url':address_url}
+            r = requests.put(query[0].person_url, data=json.dumps(payload) )
+            response['PUT response'] = r.text.encode("ascii")
+     
+        except RequestException:
+            raise InvalidUsage('PUT on persons failed at' + query[0].person_url, status_code=400)
+                    
+        response = json.dumps(response)
         code = 201
 
     return response, code 
@@ -80,7 +100,8 @@ def get_put_del_address_id(a_id):
     code = 400
     response = ''
     query = session.query(Addresses).filter_by(a_id=a_id).all()
-    address = { 'address': query[0].address, 'city': query[0].city, 'state': query[0].state, 'zip': query[0].zip, 'country': query[0].country } if query else None
+    address = {'a_id': a_id, 'address': query[0].address, 'city': query[0].city, 'state': query[0].state, \
+       'zip': query[0].zip, 'country': query[0].country, 'person_url': query[0].person_url} if query else None
 
     if not address:
         raise InvalidUsage('a_id not found', status_code=404)
@@ -102,22 +123,24 @@ def get_put_del_address_id(a_id):
 
     return response, code
     
-@application.route('/addresses/<a_id>/persons', methods=['GET'])
+@application.route('/address/<a_id>/persons', methods=['GET'])
 def get_address_persons(a_id):
-    code = 400
-    response = []
-    a_url = addresses_endpoint + str(a_id) + '/addresses'
-    query = []
-    #query = session.query(Persons).filter_by(address_url=a_url).all()
+    response = ''
+    status_code=400
+    query = session.query(Addresses).filter_by(a_id=a_id).all()
     if not query:
         raise InvalidUsage('a_id not found', status_code=404)
-    for row in query:
-        response.append({ 'first_name': row.first_name, 'city': row.last_name, 'address_url': row.address_url })
-    response = json.dumps(response)
-    code = 200
     
-    return response, code
+    person_url = query[0].person_url
+    print person_url
+
+    try:
+        r = requests.get(person_url)
+    except MissingSchema:
+        raise InvalidUsage('Invalid Url', status_code=404)
+   
+    return r.text, r.status_code
 
 if __name__ == "__main__":
     application.debug = True
-    application.run()
+    application.run(port=5001)
