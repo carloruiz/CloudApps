@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from person_constants import *
 import json
 import requests
-from requests.exceptions import MissingSchema
+from requests.exceptions import MissingSchema, RequestException
 from urlparse import urlparse, parse_qs
 from flask_cors import CORS
 
@@ -60,6 +60,7 @@ def get_post_person():
             response.append({ 'p_id':row.p_id, 'last_name': row.last_name, 'first_name': row.first_name, 'address_url': row.address_url })
         response = json.dumps(response)
         code = 200
+
     else:
         payload = json.loads(request.data)
         if any(x not in payload for x in ['last_name', 'first_name']):
@@ -71,8 +72,20 @@ def get_post_person():
         person = Persons(**args)
         session.add(person)
         session.commit()
-        response = Response('')
-        response.headers['Person-URL'] = request.base_url + '/%s' % person.p_id
+        #Place person_url in addresses with PUT call
+        query = session.query(Persons).filter_by(**args).all()
+        person_url = persons_endpoint + '/' + str(query[-1].p_id)
+        response = {'Person-URL':person_url}
+
+        try:
+            payload = {'person_url':person_url}
+            r = requests.put(query[0].address_url, data=json.dumps(payload))
+            response['PUT response'] = r.text.encode("ascii")
+     
+        except RequestException:
+            raise InvalidUsage('PUT on addresses failed at' + query[0].address_url, status_code=400)
+                    
+        response = json.dumps(response)
         code = 201
     return response, code 
 

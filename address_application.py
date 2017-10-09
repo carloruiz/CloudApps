@@ -79,11 +79,11 @@ def get_post_address():
         #Place address_url in persons with PUT call
         query = session.query(Addresses).filter_by(**args).all()
         address_url = addresses_endpoint + '/' + str(query[0].a_id)
-        response = {'Address-URL': request.base_url + '/%s' % address.a_id}
+        response = {'Address-URL':address_url}
         
         try:
             payload = {'address_url':address_url}
-            r = requests.put(query[0].person_url, data=json.dumps(payload) )
+            r = requests.put(query[0].person_url, data=json.dumps(payload))
             response['PUT response'] = r.text.encode("ascii")
      
         except RequestException:
@@ -136,11 +136,11 @@ def get_address_persons(a_id):
 
     try:
         r = requests.get(person_url)
-    except MissingSchema:
+    except RequestException:
         raise InvalidUsage('Invalid Url', status_code=404)
    
     return r.text, r.status_code
 
 if __name__ == "__main__":
     application.debug = True
-    application.run(port=5001)
+    application.run()
