@@ -98,7 +98,13 @@ def get_put_del_address_id(a_id):
         code = 200
 
     elif request.method == 'PUT':
-        address.update(json.loads(request.data))
+        payload = json.loads(request.data)
+        args = {}
+        for x in ['address', 'city', 'state', 'zip', 'country']:
+            if x in payload:
+                args[x] = payload[x]
+
+        address.update(args)
         session.query(Addresses).filter_by(a_id=a_id).update(address)
         session.commit()
         code = 204
@@ -114,10 +120,6 @@ def get_put_del_address_id(a_id):
 def get_address_persons(a_id):
     code = 400
     address_url = request.base_url[0:request.base_url.rfind('/')]
-    print(address_url + '\n\n\n\n\n\n\n\n')
-
-    print(persons_endpoint)
-
     r = requests.get(persons_endpoint , params={"address_url": address_url})
     return r.text, r.status_code
 
