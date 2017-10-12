@@ -49,8 +49,11 @@ def get_post_address():
         for x in ['address', 'city', 'state', 'zip', 'country']:
             if x in request.args:
                 args[x] = request.args[x]
-         
-        query = session.query(Addresses).filter_by(**args).order_by(Addresses.a_id)[offset:offset+10]
+        try:         
+            query = session.query(Addresses).filter_by(**args).order_by(Addresses.a_id)[offset:offset+10]
+        except sqlalchemy.exc.InvalidRequestError:
+            session.rollback()
+            raise InvalidUsage('database error', satus_code=500)
 
         response = []
         for row in query:
@@ -66,14 +69,18 @@ def get_post_address():
         args = {}
         for x in ['address', 'city', 'state']:
             args[x] = payload[x]
-        
-        query = session.query(Addresses).filter_by(**args).all()
-        if query:
-            address = query[0]
-        else:
-            address = Addresses(**args)
-            session.add(address)
-            session.commit()
+       
+        try:
+            query = session.query(Addresses).filter_by(**args).all()
+            if query:
+                address = query[0]
+            else:
+                address = Addresses(**args)
+                session.add(address)
+                session.commit()
+        except sqlalchemy.exc.InvalidRequestError:
+            session.rollback()
+            raise InvalidUsage('database error', status_code=500)
 
         response = Response('')
             
@@ -87,7 +94,12 @@ def get_put_del_address_id(a_id):
 
     code = 400
     response = ''
-    query = session.query(Addresses).filter_by(a_id=a_id).all()
+    try:
+        query = session.query(Addresses).filter_by(a_id=a_id).all()
+    except sqlalchemy.exc.InvalidRequestError:
+        session.rollback()
+        raise InvalidUsage("database error", status_code=500)
+
     address = { 'a_id': a_id, 'address': query[0].address, 'city': query[0].city, 'state': query[0].state, 'zip': query[0].zip, 'country': query[0].country } if query else None
 
     if not address:
