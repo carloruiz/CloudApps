@@ -64,7 +64,7 @@ def get_post_address():
             raise InvalidUsage('Address supplied is incomplete')
 
         args = {}
-        for x in ['address', 'city', 'state', 'zip', 'country']:
+        for x in ['address', 'city', 'state']:
             args[x] = payload[x]
         
         query = session.query(Addresses).filter_by(**args).all()
