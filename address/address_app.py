@@ -35,11 +35,34 @@ application = Flask(__name__)
 CORS(application)
 
 
+
 @application.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
     response.status_code = error.status_code
     return response
+
+def verify_smarty_streets(args):
+    args['zipcode'] = args.pop('zip')
+    args['street'] = args.pop('address')
+    args['candidates'] = 5
+    args.update(auth_params)
+    r = requests.get(smarty_streets_url, params=args)
+    print(r)
+    print(r.text)
+    body = json.loads(r.text)
+    
+    if not body:
+        raise InvalidUsage('Your supplied address is invalid.')
+    
+    normalized = {}
+    normalized['address'] = body[0]["delivery_line_1"]
+    normalized['city'] = body[0]['components']["city_name"]
+    normalized['state'] = body[0]['components']["state_abbreviation"]
+    normalized['zip'] = body[0]['components']["zipcode"]
+    normalized['country'] = args['country']
+
+    return normalized
 
 @application.route('/address', methods=['GET', 'POST'])
 def get_post_address():
@@ -67,11 +90,13 @@ def get_post_address():
         for x in ['address', 'city', 'state', 'zip', 'country']:
             args[x] = payload[x]
         
-        query = session.query(Addresses).filter_by(**args).all()
+        normalized = verify_smarty_streets(args)
+    
+        query = session.query(Addresses).filter_by(**normalized).all()
         if query:
             address = query[0]
         else:
-            address = Addresses(**args)
+            address = Addresses(**normalized)
             session.add(address)
             session.commit()
 
